@@ -17,8 +17,8 @@ import os
 #Import the os module to interact with operating systems
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_FILE = os.path.join(BASE_DIR, "shortener.db")
-DATABASE_URL = "sqlite:///./shortener.db"
+DATABASE_FILE = "/data/shortener.db"
+DATABASE_URL = f"sqlite:///{DATABASE_FILE}"
 #Define the SQLite database URL
 #Fix the absolute path to the dabatase in the correct directory
 

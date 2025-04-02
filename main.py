@@ -48,16 +48,23 @@ import uvicorn
 
 from fastapi.responses import HTMLResponse
 
-if __name__ == "__main__":
-    uvicorn.run("main:app", host = "0.0.0.0", port = "8000", reload = True)
+from fastapi.staticfiles import StaticFiles
+
+from fastapi.responses import FileResponse
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins = ["*"],
+    allow_credentials = True,
+    allow_methods = ["*"],
+    allow_headers = ["*"],
 )
 #Enable cross-object resource sharing
 
@@ -69,29 +76,9 @@ def get_database():
         db.close()
 #Establish the dependency to get a database session
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    return """
-    <h1>URL Shortener API</h1>
-    <p>The backend is running. Use the frontend to interact with it.</p>
-    """
-
-"""def load_url_database():
-        try:
-            with open("url_database.json", "r") as file:
-                return json.load(file)
-        except FileNotFoundError:
-            return {}"""
-#Load URLs from a JSON file
-
-"""def save_url_database(data):
-        with open("url_database.json", "w") as file:
-            json.dump(data, file)
-            print("Saved to JSON file:", data)"""
-#Save URLs to a JSON file
-
-"""url_database = load_url_database()"""
-#Set up a place for the storage of URLs for later use
+class URL_Mapping_Response(BaseModel):
+    new_short_url: str
+    old_long_url: str
 
 class Request_URL(BaseModel):
     old_long_url: str
@@ -102,20 +89,6 @@ def shortened_url_generator(total_length = 8):
     return ''.join(random.choices(characters, k = total_length))
 #Set up a function to generate a shortened URL with a length of 8 based on ASCII letters and digits
 #Form a 62-character alphanumeric set, namely 26 upper case letters, 26 lower case letters, and 10 digits
-
-"""@app.post("/shorten_url")
-    def url_shortening(request: Request_URL):
-        new_short_url = shortened_url_generator()
-        old_long_url = request.old_long_url.strip()
-        if not old_long_url.startswith(("http://", "https://")):
-            old_long_url = "http://" + old_long_url
-        url_database[new_short_url] = old_long_url
-        save_url_database(url_database)
-        print("Database Contents:", url_database)
-        return{"new_short_url": new_short_url, "old_long_url": old_long_url}"""
-#Define a function to generate a new short URL from an old long URL
-#Insert the new URL into the URL database
-#Discarded but kept to document the original core functionality design
 
 @app.post("/shorten_url")
 def url_shortening(request: Request_URL, db: Session = Depends(get_database)):
@@ -134,22 +107,6 @@ def url_shortening(request: Request_URL, db: Session = Depends(get_database)):
 async def favicon():
     return JSONResponse(status_code = 204, content = None)
 #Prevent unnecessary 404 logs in the FastAPI server
-
-"""@app.get("/{new_short_url}")
-    def redirect_url(new_short_url: str):
-        url_database = load_url_database()
-        new_short_url = unquote(new_short_url)
-        print(f"Incoming Request For: ", repr(new_short_url))
-        print(f"JSON Database Contents: ", url_database)
-        if new_short_url in url_database:
-            old_long_url = url_database[new_short_url]
-            print(f"FOUND: Redirecting to {old_long_url}")
-            return RedirectResponse(url = old_long_url, status_code = 308)  
-        else:
-            print(f"ERROR: '{new_short_url}' NOT FOUND in database!")
-            raise HTTPException(status_code = 404, detail = "Sorry, URL Not Found!")"""
-#Redirect permanently to prevent recursive requests
-#Establish corresponding error messages
 
 @app.get("/short/{new_short_url}") 
 def redirect_url(new_short_url: str, db: Session = Depends(get_database)):
@@ -170,18 +127,25 @@ def redirect_url(new_short_url: str, db: Session = Depends(get_database)):
 
 @app.get("/list_of_urls")
 def list_all_urls(db: Session = Depends(get_database)):
-    print("The list_all_urls function is called!")
+    logger.info("The list_all_urls function is called!")
+    logger.info(f">>> DB FILE PATH: {os.path.abspath('shortener.db')}")
     urls = db.query(URLMapping).all()
-    print(f"Raw URls from database: {urls}")
+    logger.info("DEBUG - Raw URL entries from DB: ")
+    for u in urls:
+        logger.info(f"{u.the_short_url=}, {u.the_long_url=}")
     if not urls:
-        print("No URLs found in DB, returning 404!")
         raise HTTPException(status_code = 404, detail = "No URLs found!")
-    print("URLs found, returning data.ta")
-    return urls
+    url_dicts = [
+        {
+            "new_short_url": u.the_short_url,
+            "old_long_url": u.the_long_url
+        }
+    ]
+    return JSONResponse(content = url_dicts)
 
 @app.delete("/delete_url/{delete_short_url}")
 def delete_url(delete_short_url: str, db: Session = Depends(get_database)):
-    print(f"Attempting to delete: {delete_short_url}")
+    logger.info(f"Attempting to delete: {delete_short_url}")
     url_entry = db.query(URLMapping).filter(URLMapping.the_short_url == delete_short_url).first()
     if not url_entry:
         raise HTTPException(status_code = 404, detail = "Short URL not found!")
@@ -189,3 +153,8 @@ def delete_url(delete_short_url: str, db: Session = Depends(get_database)):
     db.commit()
     return{"message": f"Short URL {delete_short_url} deleted successfully."}
 
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host = "0.0.0.0", port = "8000", reload = True)
+
+app.mount("/", StaticFiles(directory = "frontend_ui/dist", html = True), name = "static")

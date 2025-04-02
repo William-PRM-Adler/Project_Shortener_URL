@@ -1,13 +1,27 @@
 import { useState } from "react";
 import "../styles/project_shortener_frontend.css";
+import { useEffect } from "react";
 
 export default function URL_Shortener() {
     const [LongURL, SetLongURL] = useState("");
     const [ShortURL, SetShortURL] = useState([]);
 
+    const BACKEND_URL = "https://project-shortener.fly.dev";
+
+    useEffect(() => {
+        const fetchURLs = async () => {
+            const response = await fetch(`${BACKEND_URL}/list_of_urls`);
+            if (response.ok) {
+                const data = await response.json();
+                SetShortURL(data);
+            }
+        };
+        fetchURLs();
+    }, []);
+
     const ShortenURL = async () => {
         if (!LongURL.trim()) return;
-        const response = await fetch("http://127.0.0.1:8000/shorten_url", {
+        const response = await fetch(`${BACKEND_URL}/shorten_url`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ old_long_url: LongURL }),
@@ -20,7 +34,7 @@ export default function URL_Shortener() {
     };
 
     const DeleteURL = async (shortCode) => {
-        const response = await fetch(`http://127.0.0.1:8000/delete_url/${shortCode}`, {
+        const response = await fetch(`${BACKEND_URL}/delete_url/${shortCode}`, {
             method: "DELETE",
         });
         if (response.ok) {
@@ -47,10 +61,10 @@ export default function URL_Shortener() {
 
             <div className="url-list">
                 {ShortURL.length > 0 && <h2 className="subtitle">New Short URL(s):</h2>}
-                {ShortURL.map((url, index) => (
+                {ShortURL.filter((url) => url && url.new_short_url).map((url, index) => (
                     <div key={index} className="url-entry">
                         <a
-                            href={`http://127.0.0.1:8000/short/${url.new_short_url}`}
+                            href={`https://project-shortener.fly.dev/short/${url.new_short_url}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="short-url"

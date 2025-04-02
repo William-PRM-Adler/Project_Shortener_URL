@@ -1,0 +1,18 @@
+# fly.toml for FRONTEND (project-shortener-frontend)
+app = 'project-shortener-frontend'
+primary_region = 'syd'
+
+[build]
+
+[http_service]
+  internal_port = 80  # ✅ Nginx listens on port 80 by default
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
