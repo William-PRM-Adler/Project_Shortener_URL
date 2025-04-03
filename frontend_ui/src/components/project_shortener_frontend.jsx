@@ -8,16 +8,17 @@ export default function URL_Shortener() {
 
     const BACKEND_URL = "https://project-shortener.fly.dev";
 
-    useEffect(() => {
-        const fetchURLs = async () => {
-            const response = await fetch(`${BACKEND_URL}/list_of_urls`);
-            if (response.ok) {
-                const data = await response.json();
-                SetShortURL(data);
-            }
-        };
-        fetchURLs();
-    }, []);
+//    useEffect(() => {
+//        const fetchURLs = async () => {
+//            const response = await fetch(`${BACKEND_URL}/list_of_urls`);
+//            if (response.ok) {
+//                const data = await response.json();
+//                SetShortURL(data);
+//            }
+//        };
+//        fetchURLs();
+//    }, []);
+//Fix the bug of loading previously created URLs
 
     const ShortenURL = async () => {
         if (!LongURL.trim()) return;
